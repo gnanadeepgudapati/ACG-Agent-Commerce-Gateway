@@ -4,7 +4,7 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mercora.api.deps import get_session
+from mercora.api.deps import Principal, get_current_principal, get_session
 from mercora.domain.product import Product
 from mercora.infra.product_repository import ProductRepository
 from mercora.main import app
@@ -13,11 +13,12 @@ MakeProduct = Callable[..., Product]
 
 
 @pytest_asyncio.fixture
-async def client(session: AsyncSession) -> AsyncIterator[AsyncClient]:
+async def client(session: AsyncSession, principal: Principal) -> AsyncIterator[AsyncClient]:
     async def override_get_session() -> AsyncIterator[AsyncSession]:
         yield session
 
     app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[get_current_principal] = lambda: principal
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac

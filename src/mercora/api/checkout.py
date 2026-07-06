@@ -6,7 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mercora.adapters.payment import PaymentAdapter
 from mercora.adapters.tax import TaxAdapter
-from mercora.api.deps import get_payment_adapter, get_session, get_tax_adapter
+from mercora.api.deps import (
+    Principal,
+    get_payment_adapter,
+    get_session,
+    get_tax_adapter,
+    require_scope,
+)
 from mercora.domain.address import Address
 from mercora.domain.order import Order
 from mercora.infra.cart_repository import CartRepository
@@ -21,6 +27,7 @@ router = APIRouter(prefix="/v1", tags=["checkout"])
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 PaymentDep = Annotated[PaymentAdapter, Depends(get_payment_adapter)]
 TaxDep = Annotated[TaxAdapter, Depends(get_tax_adapter)]
+WriteScope = Annotated[Principal, Depends(require_scope("checkout:write"))]
 
 _ERROR_STATUS = {
     "CART_NOT_FOUND": 404,
@@ -39,7 +46,11 @@ class CheckoutRequest(BaseModel):
 
 @router.post("/checkout", response_model=Order, status_code=201)
 async def checkout(
-    body: CheckoutRequest, session: SessionDep, payment_adapter: PaymentDep, tax_adapter: TaxDep
+    body: CheckoutRequest,
+    session: SessionDep,
+    payment_adapter: PaymentDep,
+    tax_adapter: TaxDep,
+    principal: WriteScope,
 ) -> Order:
     saga = CheckoutSaga(
         cart_repo=CartRepository(session),
@@ -52,6 +63,7 @@ async def checkout(
     try:
         return await saga.checkout(
             cart_id=body.cart_id,
+            partner_id=principal.partner_id,
             address=body.address,
             payment_token=body.payment_token,
             idempotency_key=body.idempotency_key,

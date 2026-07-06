@@ -11,6 +11,7 @@ def _to_domain(row: OrderORM) -> Order:
     return Order(
         id=row.id,
         cart_id=row.cart_id,
+        partner_id=row.partner_id,
         currency=row.currency,
         items=[
             CartItem(
@@ -45,6 +46,7 @@ class OrderRepository:
             OrderORM(
                 id=order.id,
                 cart_id=order.cart_id,
+                partner_id=order.partner_id,
                 currency=order.currency,
                 subtotal_cents=order.subtotal.amount_cents,
                 tax_cents=order.tax.amount_cents,
@@ -69,6 +71,8 @@ class OrderRepository:
         )
         await self._session.commit()
 
-    async def get(self, order_id: str) -> Order | None:
+    async def get(self, order_id: str, partner_id: str) -> Order | None:
         row = await self._session.get(OrderORM, order_id)
-        return _to_domain(row) if row else None
+        if row is None or row.partner_id != partner_id:
+            return None
+        return _to_domain(row)

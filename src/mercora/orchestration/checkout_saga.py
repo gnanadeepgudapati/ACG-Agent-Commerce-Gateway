@@ -38,15 +38,22 @@ class CheckoutSaga:
         self._tax = tax_adapter
 
     async def checkout(
-        self, *, cart_id: str, address: Address, payment_token: str, idempotency_key: str
+        self,
+        *,
+        cart_id: str,
+        partner_id: str,
+        address: Address,
+        payment_token: str,
+        idempotency_key: str,
     ) -> Order:
-        existing_order_id = await self._idempotency.get(idempotency_key)
+        namespaced_key = f"{partner_id}:{idempotency_key}"
+        existing_order_id = await self._idempotency.get(namespaced_key)
         if existing_order_id is not None:
-            order = await self._orders.get(existing_order_id)
+            order = await self._orders.get(existing_order_id, partner_id)
             assert order is not None
             return order
 
-        cart = await self._carts.get(cart_id)
+        cart = await self._carts.get(cart_id, partner_id)
         if cart is None:
             raise CartNotFoundForCheckoutError(cart_id)
         if not cart.items:
@@ -57,7 +64,7 @@ class CheckoutSaga:
         try:
             tax = await self._tax.compute(cart.subtotal)
             total = cart.subtotal + tax
-            authorization = await self._authorize_payment(total, payment_token, idempotency_key)
+            authorization = await self._authorize_payment(total, payment_token, namespaced_key)
         except Exception:
             await self._release_inventory(reserved)
             raise
@@ -66,6 +73,7 @@ class CheckoutSaga:
             order = Order(
                 id=str(uuid.uuid4()),
                 cart_id=cart_id,
+                partner_id=partner_id,
                 currency=cart.currency,
                 items=cart.items,
                 address=address,
@@ -76,7 +84,7 @@ class CheckoutSaga:
                 payment_authorization_id=authorization.id,
             )
             await self._orders.add(order)
-            await self._idempotency.record(idempotency_key, order.id)
+            await self._idempotency.record(namespaced_key, order.id)
             return order
         except Exception:
             await self._payment.void(authorization.id)

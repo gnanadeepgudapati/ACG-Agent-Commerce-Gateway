@@ -3,7 +3,7 @@ from mercora.domain.money import Money
 
 
 def test_empty_cart_subtotal_is_zero() -> None:
-    cart = Cart(id="cart-1", currency="USD")
+    cart = Cart(id="cart-1", partner_id="demo-partner", currency="USD")
     assert cart.subtotal == Money.zero("USD")
 
 
@@ -15,6 +15,7 @@ def test_line_total_multiplies_unit_price_by_quantity() -> None:
 def test_cart_subtotal_sums_line_items() -> None:
     cart = Cart(
         id="cart-1",
+        partner_id="demo-partner",
         currency="USD",
         items=[
             CartItem(sku="A", quantity=2, unit_price=Money(amount_cents=500, currency="USD")),

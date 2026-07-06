@@ -5,9 +5,28 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from mercora.api.deps import Principal
 from mercora.domain.money import Money
 from mercora.domain.product import Product
 from mercora.infra.db import init_db
+
+TEST_PARTNER_ID = "demo-partner"
+OTHER_PARTNER_ID = "other-partner"
+
+ALL_SCOPES = frozenset({"catalog:read", "cart:read", "cart:write", "checkout:write", "orders:read"})
+
+
+@pytest.fixture
+def make_principal() -> Callable[..., Principal]:
+    def _make(partner_id: str = TEST_PARTNER_ID, scopes: frozenset[str] = ALL_SCOPES) -> Principal:
+        return Principal(client_id="test-client", partner_id=partner_id, scopes=scopes)
+
+    return _make
+
+
+@pytest.fixture
+def principal(make_principal: Callable[..., Principal]) -> Principal:
+    return make_principal()
 
 
 @pytest.fixture

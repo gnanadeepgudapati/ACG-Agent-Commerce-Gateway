@@ -12,6 +12,7 @@ OrderStatus = Literal["paid", "failed"]
 class Order(BaseModel):
     id: str = Field(min_length=1)
     cart_id: str = Field(min_length=1)
+    partner_id: str = Field(min_length=1)
     currency: str = Field(default="USD", min_length=3, max_length=3)
     items: list[CartItem]
     address: Address

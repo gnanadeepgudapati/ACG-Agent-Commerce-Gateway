@@ -8,7 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mercora.adapters.flat_rate_tax import FlatRateTaxAdapter
 from mercora.adapters.mock_payment import MockPaymentAdapter
-from mercora.api.deps import get_payment_adapter, get_session, get_tax_adapter
+from mercora.api.deps import (
+    Principal,
+    get_current_principal,
+    get_payment_adapter,
+    get_session,
+    get_tax_adapter,
+)
 from mercora.domain.product import Product
 from mercora.infra.product_repository import ProductRepository
 from mercora.main import app
@@ -26,13 +32,14 @@ def _decode(result: object) -> list[dict[str, object]]:
 
 
 @pytest_asyncio.fixture
-async def mcp_server(session: AsyncSession) -> AsyncIterator[FastMCP]:
+async def mcp_server(session: AsyncSession, principal: Principal) -> AsyncIterator[FastMCP]:
     async def override_get_session() -> AsyncIterator[AsyncSession]:
         yield session
 
     app.dependency_overrides[get_session] = override_get_session
     app.dependency_overrides[get_payment_adapter] = lambda: MockPaymentAdapter()
     app.dependency_overrides[get_tax_adapter] = lambda: FlatRateTaxAdapter(rate=0.10)
+    app.dependency_overrides[get_current_principal] = lambda: principal
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as http_client:

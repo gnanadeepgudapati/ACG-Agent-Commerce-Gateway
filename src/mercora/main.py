@@ -5,8 +5,9 @@ from fastapi import FastAPI
 
 from mercora.adapters.flat_rate_tax import FlatRateTaxAdapter
 from mercora.adapters.mock_payment import MockPaymentAdapter
-from mercora.api import carts, checkout, orders, products
+from mercora.api import carts, checkout, oauth, orders, products
 from mercora.core.config import settings
+from mercora.core.rate_limit import RateLimiter
 from mercora.infra.db import create_engine_and_sessionmaker, init_db
 
 
@@ -22,6 +23,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="Mercora", lifespan=lifespan)
+app.state.rate_limiter = RateLimiter(
+    max_requests=settings.rate_limit_max_requests,
+    window_seconds=settings.rate_limit_window_seconds,
+)
+app.include_router(oauth.router)
 app.include_router(products.router)
 app.include_router(carts.router)
 app.include_router(checkout.router)

@@ -20,6 +20,7 @@ class CartORM(Base):
     __tablename__ = "carts"
 
     id: Mapped[str] = mapped_column(primary_key=True)
+    partner_id: Mapped[str]
     currency: Mapped[str]
     items: Mapped[list["CartItemORM"]] = relationship(
         back_populates="cart", cascade="all, delete-orphan", lazy="selectin"
@@ -42,6 +43,7 @@ class OrderORM(Base):
 
     id: Mapped[str] = mapped_column(primary_key=True)
     cart_id: Mapped[str]
+    partner_id: Mapped[str]
     currency: Mapped[str]
     subtotal_cents: Mapped[int]
     tax_cents: Mapped[int]
