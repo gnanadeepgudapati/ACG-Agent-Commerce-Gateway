@@ -13,6 +13,7 @@ dependencies = [
     "mcp>=1.28.1",
     "pyjwt>=2.13.0",
     "python-multipart>=0.0.32",
+    "stripe>=15.3.0",
 ]
 
 [dependency-groups]

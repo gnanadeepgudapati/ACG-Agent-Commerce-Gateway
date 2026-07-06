@@ -12,6 +12,7 @@ class Settings:
     rate_limit_window_seconds: float = float(
         os.environ.get("MERCORA_RATE_LIMIT_WINDOW_SECONDS", "60")
     )
+    stripe_test_key: str | None = os.environ.get("STRIPE_TEST_KEY")
 
 
 settings = Settings()
