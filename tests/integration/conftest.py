@@ -1,10 +1,30 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 
+import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from mercora.domain.money import Money
+from mercora.domain.product import Product
 from mercora.infra.db import init_db
+
+
+@pytest.fixture
+def make_product() -> Callable[..., Product]:
+    def _make(**overrides: object) -> Product:
+        defaults: dict[str, object] = dict(
+            id="TSHIRT-BLUE-M",
+            name="Classic Tee",
+            description="A soft cotton t-shirt.",
+            price=Money(amount_cents=2500, currency="USD"),
+            attributes={"color": "blue", "size": "M"},
+            stock_qty=10,
+        )
+        defaults.update(overrides)
+        return Product(**defaults)  # type: ignore[arg-type]
+
+    return _make
 
 
 @pytest_asyncio.fixture
