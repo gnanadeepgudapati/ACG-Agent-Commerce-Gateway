@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mercora.adapters.payment import PaymentAdapter
 from mercora.adapters.tax import TaxAdapter
+from mercora.core.metrics import partner_requests_total
 from mercora.core.rate_limit import RateLimiter
 from mercora.core.security import decode_access_token
 
@@ -51,6 +52,8 @@ async def get_current_principal(
     limiter: RateLimiter = request.app.state.rate_limiter
     if not limiter.allow(partner_id):
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
+
+    partner_requests_total.labels(partner_id=partner_id).inc()
 
     return Principal(
         client_id=payload["sub"],

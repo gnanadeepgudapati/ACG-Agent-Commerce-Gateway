@@ -32,7 +32,13 @@ def test_wrong_signature_rejected() -> None:
     token = create_access_token(
         client_id="agent-demo", partner_id="demo-partner", scopes=frozenset({"catalog:read"})
     )
-    tampered = token[:-1] + ("A" if token[-1] != "A" else "B")
+    # Flip a character in the middle of the signature, not the last one: the trailing
+    # base64url character can carry unused padding bits, so mutating it doesn't always
+    # change the decoded bytes and would make this test flaky.
+    signature_start = token.rindex(".") + 1
+    flip_at = signature_start + 2
+    flipped_char = "A" if token[flip_at] != "A" else "B"
+    tampered = token[:flip_at] + flipped_char + token[flip_at + 1 :]
     with pytest.raises(jwt.PyJWTError):
         decode_access_token(tampered)
 

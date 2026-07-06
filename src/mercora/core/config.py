@@ -13,6 +13,7 @@ class Settings:
         os.environ.get("MERCORA_RATE_LIMIT_WINDOW_SECONDS", "60")
     )
     stripe_test_key: str | None = os.environ.get("STRIPE_TEST_KEY")
+    otel_exporter_otlp_endpoint: str | None = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
 
 
 settings = Settings()

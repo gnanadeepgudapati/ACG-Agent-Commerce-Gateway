@@ -13,6 +13,7 @@ from mercora.api.deps import (
     get_tax_adapter,
     require_scope,
 )
+from mercora.core.metrics import checkout_saga_total
 from mercora.domain.address import Address
 from mercora.domain.order import Order
 from mercora.infra.cart_repository import CartRepository
@@ -61,7 +62,7 @@ async def checkout(
         tax_adapter=tax_adapter,
     )
     try:
-        return await saga.checkout(
+        order = await saga.checkout(
             cart_id=body.cart_id,
             partner_id=principal.partner_id,
             address=body.address,
@@ -69,7 +70,10 @@ async def checkout(
             idempotency_key=body.idempotency_key,
         )
     except CheckoutError as exc:
+        checkout_saga_total.labels(outcome=exc.code.lower()).inc()
         status_code = _ERROR_STATUS.get(exc.code, 400)
         raise HTTPException(
             status_code=status_code, detail={"code": exc.code, "message": str(exc)}
         ) from exc
+    checkout_saga_total.labels(outcome="success").inc()
+    return order

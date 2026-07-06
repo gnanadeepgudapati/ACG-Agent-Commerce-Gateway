@@ -1,5 +1,7 @@
 import uuid
 
+from opentelemetry import trace
+
 from mercora.adapters.payment import Authorization, PaymentAdapter, PaymentDeclined
 from mercora.adapters.tax import TaxAdapter
 from mercora.domain.address import Address
@@ -18,6 +20,8 @@ from mercora.orchestration.errors import (
 )
 
 Reservation = tuple[str, int]
+
+_tracer = trace.get_tracer(__name__)
 
 
 class CheckoutSaga:
@@ -62,29 +66,31 @@ class CheckoutSaga:
         reserved = await self._reserve_inventory(cart)
 
         try:
-            tax = await self._tax.compute(cart.subtotal)
-            total = cart.subtotal + tax
+            with _tracer.start_as_current_span("checkout.compute_tax"):
+                tax = await self._tax.compute(cart.subtotal)
+                total = cart.subtotal + tax
             authorization = await self._authorize_payment(total, payment_token, namespaced_key)
         except Exception:
             await self._release_inventory(reserved)
             raise
 
         try:
-            order = Order(
-                id=str(uuid.uuid4()),
-                cart_id=cart_id,
-                partner_id=partner_id,
-                currency=cart.currency,
-                items=cart.items,
-                address=address,
-                subtotal=cart.subtotal,
-                tax=tax,
-                total=total,
-                status="paid",
-                payment_authorization_id=authorization.id,
-            )
-            await self._orders.add(order)
-            await self._idempotency.record(namespaced_key, order.id)
+            with _tracer.start_as_current_span("checkout.persist_order"):
+                order = Order(
+                    id=str(uuid.uuid4()),
+                    cart_id=cart_id,
+                    partner_id=partner_id,
+                    currency=cart.currency,
+                    items=cart.items,
+                    address=address,
+                    subtotal=cart.subtotal,
+                    tax=tax,
+                    total=total,
+                    status="paid",
+                    payment_authorization_id=authorization.id,
+                )
+                await self._orders.add(order)
+                await self._idempotency.record(namespaced_key, order.id)
             return order
         except Exception:
             await self._payment.void(authorization.id)
@@ -92,22 +98,24 @@ class CheckoutSaga:
             raise
 
     async def _reserve_inventory(self, cart: Cart) -> list[Reservation]:
-        reserved: list[Reservation] = []
-        for item in cart.items:
-            product = await self._products.get(item.sku)
-            if product is None or product.stock_qty < item.quantity:
-                await self._release_inventory(reserved)
-                raise OutOfStockError(item.sku)
-            await self._products.decrement_stock(item.sku, item.quantity)
-            reserved.append((item.sku, item.quantity))
-        return reserved
+        with _tracer.start_as_current_span("checkout.reserve_inventory"):
+            reserved: list[Reservation] = []
+            for item in cart.items:
+                product = await self._products.get(item.sku)
+                if product is None or product.stock_qty < item.quantity:
+                    await self._release_inventory(reserved)
+                    raise OutOfStockError(item.sku)
+                await self._products.decrement_stock(item.sku, item.quantity)
+                reserved.append((item.sku, item.quantity))
+            return reserved
 
     async def _release_inventory(self, reserved: list[Reservation]) -> None:
         for sku, qty in reserved:
             await self._products.increment_stock(sku, qty)
 
     async def _authorize_payment(self, total: Money, token: str, idem_key: str) -> Authorization:
-        try:
-            return await self._payment.authorize(total, token, idem_key)
-        except PaymentDeclined as exc:
-            raise PaymentDeclinedError(str(exc)) from exc
+        with _tracer.start_as_current_span("checkout.authorize_payment"):
+            try:
+                return await self._payment.authorize(total, token, idem_key)
+            except PaymentDeclined as exc:
+                raise PaymentDeclinedError(str(exc)) from exc
