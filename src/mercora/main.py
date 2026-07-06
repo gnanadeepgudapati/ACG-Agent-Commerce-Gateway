@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from mercora.api import products
+from mercora.api import carts, products
 from mercora.core.config import settings
 from mercora.infra.db import create_engine_and_sessionmaker, init_db
 
@@ -19,6 +19,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="Mercora", lifespan=lifespan)
 app.include_router(products.router)
+app.include_router(carts.router)
 
 
 @app.get("/healthz")

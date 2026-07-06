@@ -26,7 +26,7 @@ async def test_add_item_then_get(session: AsyncSession) -> None:
         cart.id, sku="SKU-1", quantity=2, unit_price=Money(amount_cents=1000, currency="USD")
     )
 
-    assert updated.subtotal() == Money(amount_cents=2000, currency="USD")
+    assert updated.subtotal == Money(amount_cents=2000, currency="USD")
     refetched = await repo.get(cart.id)
     assert refetched == updated
 

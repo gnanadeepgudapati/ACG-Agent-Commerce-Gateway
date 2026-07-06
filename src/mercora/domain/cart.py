@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 from mercora.domain.money import Money
 
@@ -8,6 +8,8 @@ class CartItem(BaseModel):
     quantity: int = Field(gt=0)
     unit_price: Money
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
     def line_total(self) -> Money:
         return self.unit_price * self.quantity
 
@@ -17,8 +19,10 @@ class Cart(BaseModel):
     currency: str = Field(default="USD", min_length=3, max_length=3)
     items: list[CartItem] = Field(default_factory=list)
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
     def subtotal(self) -> Money:
         total = Money.zero(self.currency)
         for item in self.items:
-            total = total + item.line_total()
+            total = total + item.line_total
         return total
