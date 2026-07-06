@@ -21,9 +21,7 @@ class Money(BaseModel):
 
     def _check_same_currency(self, other: Money) -> None:
         if self.currency != other.currency:
-            raise ValueError(
-                f"currency mismatch: {self.currency} vs {other.currency}"
-            )
+            raise ValueError(f"currency mismatch: {self.currency} vs {other.currency}")
 
     def __add__(self, other: Money) -> Money:
         self._check_same_currency(other)

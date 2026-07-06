@@ -33,9 +33,7 @@ def test_subtract_below_zero_raises() -> None:
 
 
 def test_multiply_by_quantity() -> None:
-    assert Money(amount_cents=1000, currency="USD") * 3 == Money(
-        amount_cents=3000, currency="USD"
-    )
+    assert Money(amount_cents=1000, currency="USD") * 3 == Money(amount_cents=3000, currency="USD")
 
 
 def test_negative_amount_rejected() -> None:
