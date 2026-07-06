@@ -60,10 +60,20 @@ class ProductRepository:
                 p for p in products if p.attributes.get("color", "").lower() == color.lower()
             ]
         if size:
-            products = [
-                p for p in products if p.attributes.get("size", "").lower() == size.lower()
-            ]
+            products = [p for p in products if p.attributes.get("size", "").lower() == size.lower()]
         if max_price_cents is not None:
             products = [p for p in products if p.price.amount_cents <= max_price_cents]
 
         return products
+
+    async def decrement_stock(self, product_id: str, qty: int) -> None:
+        row = await self._session.get(ProductORM, product_id)
+        assert row is not None
+        row.stock_qty -= qty
+        await self._session.commit()
+
+    async def increment_stock(self, product_id: str, qty: int) -> None:
+        row = await self._session.get(ProductORM, product_id)
+        assert row is not None
+        row.stock_qty += qty
+        await self._session.commit()
